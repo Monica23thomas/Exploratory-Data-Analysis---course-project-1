@@ -1,0 +1,134 @@
+##Plot 1: Total PM2.5 Emissions in the U.S. (1999–2008)
+#Title: Total PM2.5 Emissions in the United States (1999–2008)
+#Caption: Annual total PM2.5 emissions from all sources in the U.S. over the years 1999, 2002, 2005, and 2008.
+# Load necessary libraries
+library(dplyr)
+
+# Read the data
+NEI <- readRDS("summarySCC_PM25.rds")
+
+# Summarize total emissions by year
+total_emissions <- NEI %>%
+  filter(year %in% c(1999, 2002, 2005, 2008)) %>%
+  group_by(year) %>%
+  summarize(total_emissions = sum(Emissions))
+
+# Create the plot
+png("plot1.png", width = 480, height = 480)
+barplot(total_emissions$total_emissions,
+        names.arg = total_emissions$year,
+        xlab = "Year",
+        ylab = "Total Emissions (Tons)",
+        main = "Total PM2.5 Emissions in the United States (1999–2008)",
+        col = "skyblue")
+dev.off()
+
+##Plot 2: PM2.5 Emissions in Baltimore City (1999–2008)
+#Title: PM2.5 Emissions in Baltimore City, Maryland (1999–2008)
+#Caption: Annual total PM2.5 emissions from all sources in Baltimore City over the years 1999, 2002, 2005, and 2008
+# Filter data for Baltimore City
+baltimore_emissions <- NEI %>%
+  filter(fips == "24510", year %in% c(1999, 2002, 2005, 2008)) %>%
+  group_by(year) %>%
+  summarize(total_emissions = sum(Emissions))
+
+# Create the plot
+png("plot2.png", width = 480, height = 480)
+barplot(baltimore_emissions$total_emissions,
+        names.arg = baltimore_emissions$year,
+        xlab = "Year",
+        ylab = "Total Emissions (Tons)",
+        main = "PM2.5 Emissions in Baltimore City, Maryland (1999–2008)",
+        col = "lightgreen")
+dev.off()
+##Plot 3: PM2.5 Emissions by Source Type in Baltimore City (1999–2008)
+#Title: PM2.5 Emissions by Source Type in Baltimore City, Maryland (1999–2008)
+#Caption: Comparison of PM2.5 emissions by source type (point, nonpoint, on-road, non-road) in Baltimore City over the years 1999, 2002, 2005, and 2008.
+# Summarize emissions by source type
+source_type_emissions <- NEI %>%
+  filter(fips == "24510", year %in% c(1999, 2002, 2005, 2008)) %>%
+  group_by(year, type) %>%
+  summarize(total_emissions = sum(Emissions))
+
+# Create the plot
+library(ggplot2)
+png("plot3.png", width = 480, height = 480)
+ggplot(source_type_emissions, aes(x = factor(year), y = total_emissions, fill = type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Year", y = "Total Emissions (Tons)",
+       title = "PM2.5 Emissions by Source Type in Baltimore City, Maryland (1999–2008)") +
+  scale_fill_brewer(palette = "Set3") +
+  theme_minimal()
+dev.off()
+##Plot 4: Coal Combustion-Related Emissions in the U.S. (1999–2008)
+#Title: Coal Combustion-Related PM2.5 Emissions in the United States (1999–2008)
+#Caption: Annual total PM2.5 emissions from coal combustion-related sources in the U.S. over the years 1999, 2002, 2005, and 2008.
+# Load SCC data
+SCC <- readRDS("Source_Classification_Code.rds")
+
+# Filter coal combustion-related sources
+coal_sources <- SCC %>%
+  filter(grepl("Coal", Short.Name))
+
+# Merge with NEI data
+coal_emissions <- NEI %>%
+  filter(SCC %in% coal_sources$SCC, year %in% c(1999, 2002, 2005, 2008)) %>%
+  group_by(year) %>%
+  summarize(total_emissions = sum(Emissions))
+
+# Create the plot
+png("plot4.png", width = 480, height = 480)
+barplot(coal_emissions$total_emissions,
+        names.arg = coal_emissions$year,
+        xlab = "Year",
+        ylab = "Total Emissions (Tons)",
+        main = "Coal Combustion-Related PM2.5 Emissions in the United States (1999–2008)",
+        col = "salmon")
+dev.off()
+##Plot 5: Motor Vehicle Emissions in Baltimore City (1999–2008)
+#Title: Motor Vehicle PM2.5 Emissions in Baltimore City, Maryland (1999–2008)
+#Caption: Annual total PM2.5 emissions from motor vehicle sources in Baltimore City over the years 1999, 2002, 2005, and 2008.
+# Filter for motor vehicle sources
+vehicle_sources <- SCC %>%
+  filter(grepl("Mobile", Short.Name))
+
+# Merge with NEI data
+vehicle_emissions <- NEI %>%
+  filter(fips == "24510", SCC %in% vehicle_sources$SCC, year %in% c(1999, 2002, 2005, 2008)) %>%
+  group_by(year) %>%
+  summarize(total_emissions = sum(Emissions))
+
+# Create the plot
+png("plot5.png", width = 480, height = 480)
+barplot(vehicle_emissions$total_emissions,
+        names.arg = vehicle_emissions$year,
+        xlab = "Year",
+        ylab = "Total Emissions (Tons)",
+        main = "Motor Vehicle PM2.5 Emissions in Baltimore City, Maryland (1999–2008)",
+        col = "lightcoral")
+dev.off()
+
+##Plot 6: Comparison of Motor Vehicle Emissions: Baltimore City vs. Los Angeles County
+#Title: Comparison of Motor Vehicle PM2.5 Emissions: Baltimore City vs. Los Angeles County (1999–2008)
+#Caption: Comparison of annual total PM2.5 emissions from motor vehicle sources in Baltimore City and Los Angeles County over the years 1999, 2002, 2005, and 2008
+# Filter for motor vehicle sources in both cities
+la_emissions <- NEI %>%
+  filter(fips == "06037", SCC %in% vehicle_sources$SCC, year %in% c(1999, 2002, 2005, 2008)) %>%
+  group_by(year) %>%
+  summarize(total_emissions = sum(Emissions))
+
+# Combine data for both cities
+comparison_emissions <- bind_rows(
+  vehicle_emissions %>% mutate(city = "Baltimore City"),
+  la_emissions %>% mutate(city = "Los Angeles County")
+)
+
+# Create the plot
+png("plot6.png", width = 480, height = 480)
+ggplot(comparison_emissions, aes(x = factor(year), y = total_emissions, fill = city)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(x = "Year", y = "Total Emissions (Tons)",
+       title = "Comparison of Motor Vehicle PM2.5 Emissions: Baltimore City vs. Los Angeles County (1999–2008)") +
+  scale_fill_manual(values = c("skyblue", "salmon")) +
+  theme_minimal()
+dev.off()
